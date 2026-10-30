@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HVAC Equation Solver – L/s to FPM</title>
+<style>
+:root { color-scheme: light; }
+body { font-family: Arial, "Tahoma", sans-serif; max-width: 900px; margin: 28px auto; padding: 0 16px; color: #1f2937; background: #f4f7fb; }
+h1 { font-size: 1.65rem; margin-bottom: 8px; }
+.card { background: white; border: 1px solid #dbe3ef; border-radius: 12px; padding: 20px; margin: 16px 0; box-shadow: 0 2px 8px #00000008; }
+label { display: block; font-weight: 600; margin: 12px 0 6px; }
+input { box-sizing: border-box; width: 100%; padding: 10px 12px; border: 1px solid #b9c5d6; border-radius: 7px; font-size: 1rem; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(170px,1fr)); gap: 12px; }
+.result { font-size: 1.6rem; font-weight: 700; color: #075985; }
+.muted { color: #64748b; font-size: .92rem; line-height: 1.5; }
+.equation { background: #f8fafc; border-left: 4px solid #0284c7; padding: 12px; margin: 10px 0; overflow-wrap: anywhere; }
+button { padding: 10px 14px; border: 0; border-radius: 7px; background: #0369a1; color: white; font-size: 1rem; cursor: pointer; margin-top: 14px; }
+button:hover { background: #075985; }
+.warn { color: #92400e; background: #fffbeb; border: 1px solid #fde68a; padding: 10px; border-radius: 8px; }
+</style>
+</head>
+<body>
+<h1>HVAC Equation Solver: L/s → FPM</h1>
+<p class="muted">กรอกขนาดช่องจ่ายลมและปริมาณลมจากแบบ เช่น <b>300 × 300 SAG W/VD @ 142 L/s</b> แล้วระบบจะแปลงเป็น FPM ให้อัตโนมัติ</p>
+
+<div class="card">
+  <h2>Input</h2>
+  <div class="grid">
+    <div><label for="width">ความกว้าง (mm)</label><input id="width" type="number" min="0" step="any" value="300"></div>
+    <div><label for="height">ความสูง (mm)</label><input id="height" type="number" min="0" step="any" value="300"></div>
+    <div><label for="flow">ปริมาณลม (L/s)</label><input id="flow" type="number" min="0" step="any" value="142"></div>
+    <div><label for="allowance">เผื่อปริมาณลม (%)</label><input id="allowance" type="number" min="0" step="any" value="0"></div>
+  </div>
+  <button id="reset" type="button">คืนค่าเริ่มต้น</button>
+</div>
+
+<div class="card">
+  <h2>Results</h2>
+  <p>ปริมาณลมหลังเผื่อ</p><div class="result" id="outFlow">142.00 L/s</div>
+  <p>ความเร็วลมเฉลี่ยจากพื้นที่กรอบเต็ม</p><div class="result" id="outFpm">310.6 FPM</div>
+  <p id="outMps">1.58 m/s</p>
+  <p id="outCfm">300.88 CFM</p>
+  <p id="outArea">พื้นที่ = 0.96865 ft²</p>
+</div>
+
+<div class="card">
+  <h2>Equation Solver (แสดงการแทนค่า)</h2>
+  <div class="equation" id="eq1"></div>
+  <div class="equation" id="eq2"></div>
+  <div class="equation" id="eq3"></div>
+  <div class="equation" id="eq4"></div>
+  <div class="equation" id="eq5"></div>
+  <p class="muted">ค่าคงที่: 1 L/s = 2.11888 CFM; 1 ft = 304.8 mm; 1 m/s = 196.85 FPM.</p>
+</div>
+<div class="warn"><b>ข้อควรทราบ:</b> ผลลัพธ์นี้ใช้พื้นที่กรอบเต็มของ SAG ขนาดที่กรอก ไม่ใช่พื้นที่เปิดสุทธิของ grille และไม่ใช่ความเร็วภายในท่อส่งลม เว้นแต่ขนาดที่กรอกจะเป็นขนาดท่อจริง</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (n, d=2) => Number.isFinite(n) ? n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}) : '—';
+function solve() {
+  const w = Number($('width').value), h = Number($('height').value);
+  const q0 = Number($('flow').value), s = Number($('allowance').value);
+  if (!(w>0 && h>0 && q0>=0 && s>=0)) {
+    ['outFlow','outFpm','outMps','outCfm','outArea','eq1','eq2','eq3','eq4','eq5'].forEach(id => $(id).textContent='กรุณากรอกค่าที่ถูกต้อง');
+    return;
+  }
+  const q = q0*(1+s/100);
+  const cfm = q*2.11888;
+  const wft = w/304.8, hft = h/304.8;
+  const area = wft*hft;
+  const fpm = cfm/area;
+  const mps = fpm/196.85;
+  $('outFlow').textContent = `${fmt(q)} L/s`;
+  $('outFpm').textContent = `${fmt(fpm,1)} FPM`;
+  $('outMps').textContent = `${fmt(mps,2)} m/s`;
+  $('outCfm').textContent = `${fmt(cfm)} CFM`;
+  $('outArea').textContent = `พื้นที่ = ${fmt(area,5)} ft²`;
+  $('eq1').textContent = `1) ปริมาณลมหลังเผื่อ: Q = Q₀ × (1 + เผื่อ/100) = ${fmt(q0)} × (1 + ${fmt(s)}/100) = ${fmt(q)} L/s`;
+  $('eq2').textContent = `2) แปลงเป็น CFM: CFM = Q × 2.11888 = ${fmt(q)} × 2.11888 = ${fmt(cfm)} CFM`;
+  $('eq3').textContent = `3) แปลงขนาดเป็น ft: W = ${fmt(w)} ÷ 304.8 = ${fmt(wft,5)} ft; H = ${fmt(h)} ÷ 304.8 = ${fmt(hft,5)} ft`;
+  $('eq4').textContent = `4) พื้นที่: A = W × H = ${fmt(wft,5)} × ${fmt(hft,5)} = ${fmt(area,5)} ft²`;
+  $('eq5').textContent = `5) ความเร็วลม: FPM = CFM ÷ A = ${fmt(cfm)} ÷ ${fmt(area,5)} = ${fmt(fpm,1)} FPM (≈ ${fmt(mps,2)} m/s)`;
+}
+['width','height','flow','allowance'].forEach(id => $(id).addEventListener('input', solve));
+$('reset').addEventListener('click', () => { $('width').value=300; $('height').value=300; $('flow').value=142; $('allowance').value=0; solve(); });
+solve();
+</script>
+</body>
+</html>
